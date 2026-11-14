@@ -55,6 +55,10 @@ odm/lib64/rfs/dsp/libqsegnetengine_dsp_skel.so;SYMLINK=vendor/lib64/rfs/dsp/libq
 # Display (HDR)
 odm/lib64/libhdr_stub.so
 
+# Display (SPR)
+vendor/etc/spr_cfg_xiaomi_o11_42_02_0a_cmd_mode_dsc_dsi_panel.xml
+vendor/etc/spr_cfg_xiaomi_o11_42_02_0b_cmd_mode_dsc_dsi_panel.xml
+
 # Displayfeature (Configs)
 odm/etc/display/3dlut-pt-onnx-ptq-htp-fp16.dlc
 odm/etc/display/8635_sr_2x_y1280x720.dlc
