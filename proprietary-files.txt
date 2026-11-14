@@ -1,10 +1,10 @@
 # All unpinned blobs are extracted from POCO F7 Pro (zorn) OS3.0.304.0.WOKMIXM
 
 # ACDB
-odm/etc/acdbdata/Forte/Forte_acdb_cal.acdb:odm/etc/acdbdata/pineapple_mtp/Forte_acdb_cal.acdb
-odm/etc/acdbdata/Forte/Forte_workspaceFileXml.qwsp:odm/etc/acdbdata/pineapple_mtp/Forte_workspaceFileXml.qwsp
-odm/etc/acdbdata/Forte/sia91xx/Forte_acdb_cal_sia.acdb:odm/etc/acdbdata/pineapple_mtp/sia91xx/Forte_acdb_cal_sia.acdb
-odm/etc/acdbdata/Forte/sia91xx/Forte_workspaceFileXml_sia.qwsp:odm/etc/acdbdata/pineapple_mtp/sia91xx/Forte_workspaceFileXml_sia.qwsp
+odm/etc/acdbdata/Forte/Forte_acdb_cal.acdb
+odm/etc/acdbdata/Forte/Forte_workspaceFileXml.qwsp
+odm/etc/acdbdata/Forte/sia91xx/Forte_acdb_cal_sia.acdb
+odm/etc/acdbdata/Forte/sia91xx/Forte_workspaceFileXml_sia.qwsp
 
 # ADSP modules
 odm/lib/rfsa/adsp/libCalculator_skel.so;SYMLINK=vendor/lib/rfsa/adsp/libCalculator_skel.so
