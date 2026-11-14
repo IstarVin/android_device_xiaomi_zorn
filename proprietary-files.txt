@@ -278,6 +278,11 @@ odm/etc/thermal-charge.conf
 # Touchscreen
 odm/firmware/focaltech_ts_fw_zorn.bin
 odm/firmware/zorn_thp_config.ini
+odm/lib64/libtouchreport.so
+odm/lib64/libtouchreport_alg_2.so;FIX_SONAME
+odm/lib64/libtouchreport_alg_fts.so;FIX_SONAME
+odm/lib64/libtouchreport_hal.so
+odm/lib64/libtouchreport_sensor.so
 
 # Vibrator
 odm/firmware/0_click_P_RTP.bin:vendor/etc/vibrator/effect_0.bin
