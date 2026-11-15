@@ -79,7 +79,6 @@ odm/lib64/hw/fingerprint.goodix_us.so:odm/lib64/hw/fingerprint.goodix_us.default
 odm/lib64/hw/fingerprint.qcom_us.so:odm/lib64/hw/fingerprint.qcom_us.default.so;FIX_SONAME
 
 # GNSS
-odm/etc/vintf/manifest/gnss-default.xml:odm/etc/vintf/manifest/gnss-peridot.xml
 odm/lib64/sqlite3.so;MODULE_SUFFIX=_odm
 
 # Neural networks
