@@ -40,17 +40,14 @@ def blob_fixup_graphic_buffer_size(
     ctx: BlobFixupCtx,
     file: File,
     file_path: str,
-    disassemble_symbols: [str],
+    disassemble_symbols: [str] = None,
     *args,
     **kwargs,
 ):
-    for line in run_cmd(
-        [
-            llvm_objdump_path,
-            f'--disassemble-symbols={",".join(disassemble_symbols)}',
-            file_path,
-        ]
-    ).splitlines():
+    cmd = [llvm_objdump_path, '-d', file_path]
+    if disassemble_symbols:
+        cmd.append(f'--disassemble-symbols={",".join(disassemble_symbols)}')
+    for line in run_cmd(cmd).splitlines():
         line = line.split(maxsplit=5)
         if len(line) != 6:
             continue
@@ -250,7 +247,6 @@ blob_fixups: blob_fixups_user_type = {
         'odm/lib64/libcamxifestriping.so',
         'odm/lib64/libcamximageformatutils.so',
         'odm/lib64/libcamxncsdatafactory.so',
-        'odm/lib64/libcom.xiaomi.mawutilsold.so',
         'odm/lib64/libcommonchiutils.so',
         'odm/lib64/libfastmessage.so',
         'odm/lib64/libhme.so',
@@ -296,6 +292,39 @@ blob_fixups: blob_fixups_user_type = {
         .replace_needed(
             'android.hardware.graphics.allocator-V1-ndk.so',
             'android.hardware.graphics.allocator-V2-ndk.so'
+    ),
+    'odm/lib64/camera/components/com.mi.node.tsskinbeautifier.so': blob_fixup()
+        .call(blob_fixup_graphic_buffer_size),
+    'odm/lib64/camera/plugins/com.xiaomi.plugin.filter.so': blob_fixup()
+        .call(
+            blob_fixup_graphic_buffer_size,
+            ['_ZN12FilterPlugin14processRequestEP18ProcessRequestInfo'],
+    ),
+    'odm/lib64/libcom.xiaomi.grallocutils.so': blob_fixup()
+        .call(
+            blob_fixup_graphic_buffer_size,
+            [
+                '_Z21allocateGraphicBufferjjim',
+                '_Z29createGraphicBufferFromHandlejjimjPK13native_handle',
+                '_ZN12GrallocUtils19createGrallocBufferEjjimjPK13native_handleP16GrallocBufHandle',
+            ],
+    ),
+    'odm/lib64/libcom.xiaomi.mawutils.so': blob_fixup()
+        .call(
+            blob_fixup_graphic_buffer_size,
+            ['_ZN18MAWBufferAllocator18AllocGraphicBufferEjjijPPcRi'],
+    ),
+    'odm/lib64/libcom.xiaomi.mawutilsold.so': blob_fixup()
+        .replace_needed(
+            'android.hardware.graphics.allocator-V1-ndk.so',
+            'android.hardware.graphics.allocator-V2-ndk.so'
+        )
+        .call(
+            blob_fixup_graphic_buffer_size,
+            [
+                '_ZN18MAWBufferAllocator18AllocGraphicBufferE10BufferInfoPPcRi',
+                '_Z24DMABufferToGraphicBufferjjji',
+            ],
     ),
     'odm/lib64/com.qti.feature2.anchorsync.so': blob_fixup()
         .replace_needed(
