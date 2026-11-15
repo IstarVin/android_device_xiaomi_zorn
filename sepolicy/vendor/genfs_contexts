@@ -1,4 +1,12 @@
+# Touchscreen
+genfscon sysfs /devices/virtual/touch/touch_dev/bump_sample_rate u:object_r:vendor_sysfs_touch:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/game_mode u:object_r:vendor_sysfs_touch:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/resolution_factor u:object_r:sysfs_touch_hostprocess:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/touch_filters u:object_r:vendor_sysfs_touch:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/touch_log_level u:object_r:sysfs_touch_hostprocess:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/touch_thp_ u:object_r:sysfs_touch_hostprocess:s0
+genfscon sysfs /devices/virtual/touch/touch_dev/touch_vendor u:object_r:sysfs_touch_hostprocess:s0
+
 # Wakeup
-genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a80000.i2c/i2c-7/7-0028/wakeup u:object_r:sysfs_wakeup:s0
-genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a8c000.i2c/i2c-8/8-000e/wakeup u:object_r:sysfs_wakeup:s0
 genfscon sysfs /devices/platform/soc/soc:mi_t1_chip/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/soc:xiaomi_fingerprint/wakeup u:object_r:sysfs_wakeup:s0

@@ -1,0 +1,7 @@
+# Audio
+/dev/socket/audio_holder_socket_0 u:object_r:audio_socket:s0
+/dev/socket/audio_us_socket_0 u:object_r:audio_socket:s0
+/dev/socket/audio_us_socket_1 u:object_r:audio_socket:s0
+
+# Fingerprint
+/dev/xiaomi-fp u:object_r:vendor_fingerprint_device:s0
