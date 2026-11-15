@@ -41,8 +41,8 @@ PRODUCT_PACKAGES += \
 
 # SKU
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/props/odm_CN.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_CN.prop \
-    $(LOCAL_PATH)/props/odm_GL.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_GL.prop
+    $(LOCAL_PATH)/properties/odm_CN.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_CN.prop \
+    $(LOCAL_PATH)/properties/odm_GL.prop:$(TARGET_COPY_OUT_ODM)/etc/odm_GL.prop
 
 # Soong namespaces
 PRODUCT_SOONG_NAMESPACES += \
