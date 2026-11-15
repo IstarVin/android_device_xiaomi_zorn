@@ -19,8 +19,6 @@ BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD := $(strip $(shell cat $(MODUL
 BOOT_KERNEL_MODULES := $(BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD)
 SYSTEM_KERNEL_MODULES := $(BOARD_SYSTEM_KERNEL_MODULES_LOAD)
 
-# TODO: Add st/opensource/driver (stm_nfc_i2c) and st/opensource/eSE-driver
-# (stm_st54se_gpio) once they are imported into sm8650-modules.
 TARGET_KERNEL_EXT_MODULE_ROOT := kernel/xiaomi/sm8650-modules
 TARGET_KERNEL_EXT_MODULES := \
     qcom/opensource/mmrm-driver \
@@ -52,7 +50,9 @@ TARGET_KERNEL_EXT_MODULES := \
     qcom/opensource/bt-kernel \
     qcom/opensource/wlan/platform \
     qcom/opensource/wlan/qcacld-3.0/.kiwi_v2 \
-    nxp/opensource/driver
+    nxp/opensource/driver \
+    st/opensource/driver \
+    st/opensource/eSE-driver
 
 # Board
 TARGET_BOOTLOADER_BOARD_NAME := zorn
