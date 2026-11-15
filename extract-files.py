@@ -11,6 +11,7 @@ from extract_utils.fixups_blob import (
     blob_fixups_user_type,
 )
 from extract_utils.fixups_lib import (
+    lib_fixup_remove,
     lib_fixups,
     lib_fixups_user_type,
 )
@@ -80,6 +81,10 @@ lib_fixups: lib_fixups_user_type = {
         'vendor.qti.imsrtpservice@3.0',
         'vendor.qti.imsrtpservice@3.1',
     ): lib_fixup_vendor_suffix,
+    (
+        'android.hardware.graphics.composer3-V2-ndk',
+        'vendor.qti.hardware.display.composer3-V1-ndk',
+    ): lib_fixup_remove,
 }
 
 blob_fixups: blob_fixups_user_type = {
