@@ -26,6 +26,9 @@ TARGET_KERNEL_EXT_MODULES := \
     qcom/opensource/mm-drivers/msm_ext_display \
     qcom/opensource/mm-drivers/sync_fence \
     qcom/opensource/mm-sys-kernel/ubwcp \
+    qcom/opensource/securemsm-kernel \
+    qcom/opensource/synx-kernel \
+    qcom/opensource/dsp-kernel \
     qcom/opensource/display-drivers/msm \
     qcom/opensource/touch-drivers \
     qcom/opensource/audio-kernel \
@@ -33,13 +36,10 @@ TARGET_KERNEL_EXT_MODULES := \
     qcom/opensource/graphics-kernel \
     qcom/opensource/video-driver \
     qcom/opensource/eva-kernel \
-    qcom/opensource/dsp-kernel \
-    qcom/opensource/synx-kernel \
-    qcom/opensource/securemsm-kernel \
     qcom/opensource/spu-kernel \
+    qcom/opensource/datarmnet-ext/mem \
     qcom/opensource/dataipa/drivers/platform/msm \
     qcom/opensource/datarmnet/core \
-    qcom/opensource/datarmnet-ext/mem \
     qcom/opensource/datarmnet-ext/aps \
     qcom/opensource/datarmnet-ext/offload \
     qcom/opensource/datarmnet-ext/shs \
@@ -47,8 +47,8 @@ TARGET_KERNEL_EXT_MODULES := \
     qcom/opensource/datarmnet-ext/perf_tether \
     qcom/opensource/datarmnet-ext/sch \
     qcom/opensource/datarmnet-ext/wlan \
-    qcom/opensource/bt-kernel \
     qcom/opensource/wlan/platform \
+    qcom/opensource/bt-kernel \
     qcom/opensource/wlan/qcacld-3.0/.kiwi_v2 \
     nxp/opensource/driver \
     st/opensource/driver \
