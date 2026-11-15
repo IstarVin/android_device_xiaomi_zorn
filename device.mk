@@ -30,6 +30,7 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
     ApertureOverlayZorn \
     FrameworkOverlayZorn \
+    NfcOverlayZorn \
     SettingsOverlayZorn \
     SettingsProviderOverlayZornPOCO \
     SettingsProviderOverlayZornRedmi \
