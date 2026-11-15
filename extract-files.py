@@ -26,6 +26,7 @@ from extract_utils.utils import (
 )
 
 namespace_imports = [
+    'device/xiaomi/sm8650-common',
     'hardware/qcom-caf/sm8650',
     'hardware/qcom-caf/wlan',
     'hardware/xiaomi',
@@ -64,7 +65,7 @@ def lib_fixup_odm_suffix(lib: str, partition: str, *args, **kwargs):
     return f'{lib}_{partition}' if partition == 'odm' else None
 
 def lib_fixup_vendor_suffix(lib: str, partition: str, *args, **kwargs):
-    return f'{lib}_{partition}' if partition == 'vendor' else None
+    return f'{lib}-{partition}' if partition == 'vendor' else None
 
 lib_fixups: lib_fixups_user_type = {
     **lib_fixups,
@@ -74,14 +75,10 @@ lib_fixups: lib_fixups_user_type = {
     ): lib_fixup_odm_suffix,
     (
         'vendor.qti.diaghal@1.0',
-        'vendor.qti.hardware.qccsyshal@1.0',
-        'vendor.qti.hardware.qccsyshal@1.1',
-        'vendor.qti.hardware.qccsyshal@1.2',
         'vendor.qti.hardware.wifidisplaysession@1.0',
         'vendor.qti.ImsRtpService-V1-ndk',
         'vendor.qti.imsrtpservice@3.0',
         'vendor.qti.imsrtpservice@3.1',
-        'vendor.qti.qccvndhal_aidl-V1-ndk',
     ): lib_fixup_vendor_suffix,
 }
 
@@ -329,7 +326,5 @@ module = ExtractUtilsModule(
 )
 
 if __name__ == '__main__':
-    utils = ExtractUtils.device_with_common(
-        module, 'sm8650-common', module.vendor
-    )
+    utils = ExtractUtils.device(module)
     utils.run()
