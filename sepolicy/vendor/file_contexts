@@ -5,3 +5,4 @@
 
 # Fingerprint
 /dev/xiaomi-fp u:object_r:vendor_fingerprint_device:s0
+/mnt/vendor/persist/fingerprint(/.*)? u:object_r:vendor_fingerprint_data_file:s0
