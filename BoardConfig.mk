@@ -5,28 +5,69 @@
 
 DEVICE_PATH := device/xiaomi/zorn
 
-# Partitions
-BOARD_SUPER_PARTITION_SIZE := 11811160064
-
-# Inherit from the common OEM chipset BoardConfig.
+# Include the common OEM chipset BoardConfig.
 include device/xiaomi/sm8650-common/BoardConfigCommon.mk
 
-# Bootloader
+# Kernel Modules
+MODULE_LISTS_PATH := $(DEVICE_PATH)/modules
+BOARD_SYSTEM_KERNEL_MODULES_LOAD := $(strip $(shell cat $(MODULE_LISTS_PATH)/modules.load.system_dlkm))
+BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE := $(TARGET_KERNEL_SOURCE)/modules.vendor_blocklist.msm.pineapple
+BOARD_VENDOR_KERNEL_MODULES_LOAD := $(strip $(shell cat $(MODULE_LISTS_PATH)/modules.load))
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE := $(BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE)
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := $(strip $(shell cat $(MODULE_LISTS_PATH)/modules.load.first_stage))
+BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD := $(strip $(shell cat $(MODULE_LISTS_PATH)/modules.load.first_stage $(MODULE_LISTS_PATH)/modules.load.recovery))
+BOOT_KERNEL_MODULES := $(BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD)
+SYSTEM_KERNEL_MODULES := $(BOARD_SYSTEM_KERNEL_MODULES_LOAD)
+
+# TODO: Add st/opensource/driver (stm_nfc_i2c) and st/opensource/eSE-driver
+# (stm_st54se_gpio) once they are imported into sm8650-modules.
+TARGET_KERNEL_EXT_MODULE_ROOT := kernel/xiaomi/sm8650-modules
+TARGET_KERNEL_EXT_MODULES := \
+    qcom/opensource/mmrm-driver \
+    qcom/opensource/mm-drivers/hw_fence \
+    qcom/opensource/mm-drivers/msm_ext_display \
+    qcom/opensource/mm-drivers/sync_fence \
+    qcom/opensource/mm-sys-kernel/ubwcp \
+    qcom/opensource/display-drivers/msm \
+    qcom/opensource/touch-drivers \
+    qcom/opensource/audio-kernel \
+    qcom/opensource/camera-kernel \
+    qcom/opensource/graphics-kernel \
+    qcom/opensource/video-driver \
+    qcom/opensource/eva-kernel \
+    qcom/opensource/dsp-kernel \
+    qcom/opensource/synx-kernel \
+    qcom/opensource/securemsm-kernel \
+    qcom/opensource/spu-kernel \
+    qcom/opensource/dataipa/drivers/platform/msm \
+    qcom/opensource/datarmnet/core \
+    qcom/opensource/datarmnet-ext/mem \
+    qcom/opensource/datarmnet-ext/aps \
+    qcom/opensource/datarmnet-ext/offload \
+    qcom/opensource/datarmnet-ext/shs \
+    qcom/opensource/datarmnet-ext/perf \
+    qcom/opensource/datarmnet-ext/perf_tether \
+    qcom/opensource/datarmnet-ext/sch \
+    qcom/opensource/datarmnet-ext/wlan \
+    qcom/opensource/bt-kernel \
+    qcom/opensource/wlan/platform \
+    qcom/opensource/wlan/qcacld-3.0/.kiwi_v2 \
+    nxp/opensource/driver
+
+# Board
 TARGET_BOOTLOADER_BOARD_NAME := zorn
 
 # Display
 TARGET_SCREEN_DENSITY := 600
 
-# Kernel
-TARGET_KERNEL_CONFIG += vendor/zorn_GKI.config
-TARGET_KERNEL_ADDITIONAL_FLAGS += CONFIG_ZORN_DTB=y
-TARGET_KERNEL_EXT_MODULES += xiaomi/touch-driver/o11
+# Partitions
+BOARD_SUPER_PARTITION_SIZE := 11811160064
 
 # Properties
 TARGET_ODM_PROP += $(DEVICE_PATH)/props/odm.prop
 TARGET_VENDOR_PROP += $(DEVICE_PATH)/props/vendor.prop
 
-# SEPolicy
+# Sepolicy
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 
 # Camera
