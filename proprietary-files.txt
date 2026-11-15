@@ -1539,3 +1539,64 @@ vendor/lib64/libmialgo.so
 vendor/lib64/libmilut.so
 vendor/lib64/libmips.so
 vendor/lib64/libmisr.so
+
+# ADSP
+vendor/lib/rfsa/adsp/chre_qsh_shim.so
+vendor/lib/rfsa/adsp/libDspIOProxy_skel.so
+vendor/lib/rfsa/adsp/libhalide_hexagon_remote_skel.so
+vendor/lib/rfsa/adsp/libtracker_6dof_skel_8450.so
+vendor/lib/rfsa/adsp/nearby.napp_header
+vendor/lib/rfsa/adsp/nearby.so
+
+# Camera (vendor)
+vendor/etc/camera/cameraopt_perf.json
+vendor/etc/camera/cameraopt_vendor.json
+vendor/lib64/libcameraopt.so
+vendor/lib64/libjpegdecoder.so:vendor/lib64/libjpegdecoder_prebuilt.so;FIX_SONAME
+vendor/lib64/libjpegencoder.so:vendor/lib64/libjpegencoder_prebuilt.so;FIX_SONAME
+vendor/lib64/libopencl_loader.so
+vendor/lib64/libultrahdr.so:vendor/lib64/libultrahdr_prebuilt.so;FIX_SONAME
+vendor/lib64/vendor.xiaomi.hardware.aon-V1-ndk.so
+vendor/lib64/vendor.xiaomi.hardware.camera.synthetic-V1-ndk.so
+vendor/lib64/vendor.xiaomi.hardware.camera.synthetic-impl.so
+vendor/lib64/vendor.xiaomi.hardware.quickcamera-V1-ndk.so
+vendor/lib64/vendor.xiaomi.hardware.seccam-V1-ndk.so
+vendor/lib64/vendor.xiaomi.sensor.camera-V1-ndk.so
+
+# CDSP
+vendor/lib64/rfs/dsp/libQ6MSFR_manager_skel.so
+vendor/lib64/rfs/dsp/libVppAisQnnHtp.so
+vendor/lib64/rfs/dsp/libVppFrcQnnHtp.so
+vendor/lib64/rfs/dsp/libdpp_engine_skel.so
+vendor/lib64/rfs/dsp/libdspCV_skel.so
+vendor/lib64/rfs/dsp/libevadsp.so
+vendor/lib64/rfs/dsp/libfastcvadsp.so
+vendor/lib64/rfs/dsp/libfastcvdsp_skel.so
+vendor/lib64/rfs/dsp/libmobilenet_dsp_frc.so
+vendor/lib64/rfs/dsp/libmobilenet_dsp_frc_networks.so
+vendor/lib64/rfs/dsp/libnsp_ipc_cdsp_skel.so
+vendor/lib64/rfs/dsp/libscveT2T_skel.so
+vendor/lib64/rfs/dsp/libvpp_ais.so
+vendor/lib64/rfs/dsp/libvpp_ais_networks.so
+vendor/lib64/rfs/dsp/libvpp_frc.so
+vendor/lib64/rfs/dsp/libvpp_svc_skel.so
+vendor/lib64/rfs/dsp/libvpp_vqa_networks.so
+vendor/lib64/rfs/dsp/libvpt_action_recognition.so
+vendor/lib64/rfs/dsp/libworker_pool.so
+
+# CIT sensor
+odm/bin/hw/vendor.xiaomi.sensor.citsensorservice.aidl;DISABLE_CHECKELF
+odm/etc/init/vendor.xiaomi.sensor.citsensorservice.aidl.rc
+odm/etc/vintf/manifest/vendor.xiaomi.sensor.citsensorservice.aidl.xml
+vendor/lib64/vendor.xiaomi.sensor.citsensorservice-V1-ndk.so
+vendor/lib64/xiaomi.system.hypsys.common-V1-ndk.so
+
+# Display (color manager)
+vendor/lib64/libsnapdragoncolor-manager.so
+
+# Fingerprint (vendor)
+vendor/lib64/com.fingerprints.fpc.extension-V1-ndk.so
+vendor/lib64/vendor.qti.hardware.fingerprint-V1-ndk.so
+
+# Misc
+vendor/lib64/libmidebuggerdimpl_vendor.so;DISABLE_CHECKELF

@@ -314,6 +314,25 @@ blob_fixups: blob_fixups_user_type = {
         .clear_symbol_version('AHardwareBuffer_unlock'),
     'odm/lib64/libsnpe_config.so': blob_fixup()
         .add_needed('liblog.so'),
+    (
+        'odm/bin/hw/vendor.xiaomi.sensor.citsensorservice.aidl',
+        'vendor/lib64/libsnapdragoncolor-manager.so',
+    ): blob_fixup()
+        .replace_needed(
+            'libtinyxml2.so',
+            'libtinyxml2-v34.so'
+    ),
+    'vendor/lib64/libcameraopt.so': blob_fixup()
+        .add_needed('libprocessgroup_shim.so'),
+    'vendor/lib64/libultrahdr_prebuilt.so': blob_fixup()
+        .replace_needed(
+            'libjpegdecoder.so',
+            'libjpegdecoder_prebuilt.so'
+        )
+        .replace_needed(
+            'libjpegencoder.so',
+            'libjpegencoder_prebuilt.so'
+    ),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
