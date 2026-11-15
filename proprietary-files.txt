@@ -1539,5 +1539,3 @@ vendor/lib64/libmialgo.so
 vendor/lib64/libmilut.so
 vendor/lib64/libmips.so
 vendor/lib64/libmisr.so
-vendor/lib64/libqcodec2_mocklutfilter.so
-vendor/lib64/libqcodec2_srfilter.so
