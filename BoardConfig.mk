@@ -20,6 +20,7 @@ TARGET_SCREEN_DENSITY := 600
 # Kernel
 TARGET_KERNEL_CONFIG += vendor/zorn_GKI.config
 TARGET_KERNEL_ADDITIONAL_FLAGS += CONFIG_ZORN_DTB=y
+TARGET_KERNEL_EXT_MODULES += xiaomi/touch-driver/o11
 
 # Properties
 TARGET_ODM_PROP += $(DEVICE_PATH)/props/odm.prop
