@@ -86,31 +86,9 @@ lib_fixups: lib_fixups_user_type = {
 }
 
 blob_fixups: blob_fixups_user_type = {
-    'system_ext/etc/init/qspa_system.rc': blob_fixup()
-        .regex_replace(r'\$\{ro\.boot\.vendor\.qspa:-default\}', 'default'),
-    'system_ext/etc/vintf/manifest/vendor.qti.qesdsys.service.xml': blob_fixup()
-        .regex_replace(r'(?s)^.*?(?=<manifest)', ''),
-    'system_ext/lib64/libwfdmmsrc_system.so': blob_fixup()
-        .add_needed('libgui_shim.so'),
-    'system_ext/lib64/libwfdnative.so': blob_fixup()
-        .add_needed('libbinder_shim.so')
-        .add_needed('libinput_shim.so')
-        .remove_needed('android.hidl.base@1.0.so'),
-    'system_ext/lib64/vendor.qti.hardware.qccsyshal@1.2-halimpl.so': blob_fixup()
-        .replace_needed(
-            'libprotobuf-cpp-full.so',
-            'libprotobuf-cpp-full-21.7.so'
-    ),
     (
-        'odm/bin/hw/vendor.xiaomi.sensor.citsensorservice.aidl',
         'odm/lib64/camera/plugins/com.xiaomi.plugin.anchor.so',
         'odm/lib64/com.qti.feature2.anchorsync.so',
-        'odm/lib64/hw/displayfeature.default.so',
-        'vendor/bin/hw/vendor.qti.hardware.display.composer-service',
-        'vendor/lib64/libaudiocloudctrl.so',
-        'vendor/lib64/libdpps.so',
-        'vendor/lib64/liblearningmodule.so',
-        'vendor/lib64/libsnapdragoncolor-manager.so',
     ): blob_fixup()
         .replace_needed(
             'libtinyxml2.so',
@@ -119,7 +97,6 @@ blob_fixups: blob_fixups_user_type = {
     (
         'odm/etc/camera/enhance_motiontuning.xml',
         'odm/etc/camera/motiontuning.xml',
-        'odm/etc/camera/night_motiontuning.xml'
     ): blob_fixup()
         .regex_replace('xml=version', 'xml version'),
     (
@@ -160,24 +137,10 @@ blob_fixups: blob_fixups_user_type = {
             ],
     ),
     (
-        'odm/lib64/camera/com.qti.actuator.zorn_aac_imx882_gt9764ber_wide_i_actuator.so',
-        'odm/lib64/camera/com.qti.actuator.zorn_ofilm_imx882_aw86016csr_wide_ii_actuator.so',
-        'odm/lib64/camera/com.qti.actuator.zorn_ofilm_imx882_gt9764ber_wide_iii_actuator.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_aac_imx355_gt24p64e_ultra_i_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_aac_imx882_gt24p128f_wide_i_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_aac_ov20b40_gt24p64e_front_ii_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_ofilm_imx355_p24c64e_ultra_ii_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_ofilm_imx882_bl24sa128b_wide_ii_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_ofilm_imx882_gt24p128f_wide_iii_eeprom.so',
-        'odm/lib64/camera/com.qti.eeprom.zorn_ofilm_ov20b40_p24c64e_front_eeprom.so',
-        'odm/lib64/camera/com.qti.sensor.zorn_aac_imx355_ultra_i.so',
-        'odm/lib64/camera/com.qti.sensor.zorn_aac_imx882_wide_i.so',
-        'odm/lib64/camera/com.qti.sensor.zorn_ofilm_ov20b40_front.so',
         'odm/lib64/camera/components/com.jigan.node.videobokeh.so',
         'odm/lib64/camera/components/com.mi.node.aiasd.so',
         'odm/lib64/camera/components/com.mi.node.dlengine.so',
         'odm/lib64/camera/components/com.mi.node.mawsaliency.so',
-        'odm/lib64/camera/components/com.mi.node.skinbeautifier.so',
         'odm/lib64/camera/components/com.mi.node.videobokeh.so',
         'odm/lib64/camera/components/com.mi.node.videofilter.so',
         'odm/lib64/camera/components/com.mi.node.videonight.so',
@@ -338,15 +301,12 @@ blob_fixups: blob_fixups_user_type = {
     (
         'odm/lib64/libcamxcommonutils.so',
         'odm/lib64/libmialgoengine.so',
-        'vendor/lib64/libcameraopt.so',
     ): blob_fixup()
         .add_needed('libprocessgroup_shim.so'),
     (
-        'odm/lib64/libAncHumanVideoBokehV4.so',
         'odm/lib64/libTrueSight.so',
         'odm/lib64/libMiPhotoFilter.so',
         'odm/lib64/libwa_widelens_undistort.so',
-        'odm/lib64/libmorpho_ubwc.so'
     ): blob_fixup()
         .clear_symbol_version('AHardwareBuffer_allocate')
         .clear_symbol_version('AHardwareBuffer_describe')
@@ -357,57 +317,6 @@ blob_fixups: blob_fixups_user_type = {
         .clear_symbol_version('AHardwareBuffer_unlock'),
     'odm/lib64/libsnpe_config.so': blob_fixup()
         .add_needed('liblog.so'),
-    (
-        'odm/lib64/libaudioroute_ext.so',
-        'vendor/lib64/libagm.so',
-        'vendor/lib64/libar-pal.so',
-        'vendor/lib64/libkaraokepal.so',
-        'vendor/lib64/libmcs.so',
-    ): blob_fixup()
-        .replace_needed(
-            'libaudioroute.so',
-            'libaudioroute-v34.so'
-    ),
-    'vendor/etc/clstc_config_library.xml': blob_fixup()
-        .regex_replace(r'<library>\s*<name>libdolbyclstc[\s\S]*?</library>', ''),
-    'vendor/etc/seccomp_policy/c2audio.vendor.ext-arm64.policy': blob_fixup()
-        .add_line_if_missing('setsockopt: 1'),
-    'vendor/etc/vintf/manifest/c2_manifest_vendor.xml': blob_fixup()
-        .regex_replace('.+DOLBY.+\n', ''),
-    (
-        'vendor/bin/qcc-vendor',
-        'vendor/bin/qms',
-        'vendor/bin/xtra-daemon',
-        'vendor/lib64/libcne.so',
-        'vendor/lib64/libqcc_sdk.so',
-        'vendor/lib64/libqms_client.so',
-    ): blob_fixup()
-        .add_needed('libbinder_shim.so'),
-    'vendor/lib64/libqcodec2_core.so': blob_fixup()
-        .add_needed('libcodec2_shim.so'),
-    'vendor/lib64/libqcrilNrVoiceModule.so': blob_fixup()
-        .sig_replace('a1 00 80 52 22', 'a1 00 80 52 02'),
-    'vendor/lib64/vendor.libdpmframework.so': blob_fixup()
-        .add_needed('libbinder_shim.so')
-        .add_needed('libhidlbase_shim.so'),
-    'vendor/lib64/libultrahdr_prebuilt.so': blob_fixup()
-        .replace_needed(
-            'libjpegdecoder.so',
-            'libjpegdecoder_prebuilt.so'
-        )
-        .replace_needed(
-            'libjpegencoder.so',
-            'libjpegencoder_prebuilt.so'
-    ),
-    (
-        'vendor/lib64/libVoiceSdk.so',
-        'vendor/lib64/libcapiv2uvvendor.so',
-        'vendor/lib64/liblistensoundmodel2vendor.so',
-    ): blob_fixup()
-        .replace_needed(
-            'libtensorflowlite_c.so',
-            'libtensorflowlite_c_vendor.so',
-    ),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
