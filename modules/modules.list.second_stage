@@ -122,6 +122,7 @@ qti_userspace_cdev.ko
 max31760_fan.ko
 msm_lmh_dcvs.ko
 thermal_config.ko
+mi_thermal_interface.ko
 gpu_dump_skip_cdev.ko
 qcom_edac.ko
 qcom-cpufreq-hw-debug.ko
