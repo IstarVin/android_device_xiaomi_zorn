@@ -634,4 +634,7 @@
 
     <!-- Default value for fingerprint unlock while the screen is off -->
     <bool name="config_screen_off_udfps_default_on">true</bool>
+
+    <!-- Default amplitude for vibrations that don't specify one. -->
+    <integer name="config_defaultVibrationAmplitude">200</integer>
 </resources>
