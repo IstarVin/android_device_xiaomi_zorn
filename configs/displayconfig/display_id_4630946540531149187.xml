@@ -10,8 +10,8 @@
             <nits>2.0</nits>
         </point>
         <point>
-            <value>0.333272</value>
-            <nits>500.0</nits>
+            <value>0.749847393</value>
+            <nits>1800.0</nits>
         </point>
         <point>
             <value>1.0</value>
@@ -19,8 +19,8 @@
         </point>
     </screenBrightnessMap>
     <highBrightnessMode enabled="true">
-        <transitionPoint>0.33327</transitionPoint>
-        <minimumLux>5882</minimumLux>
+        <transitionPoint>0.249908436</transitionPoint>
+        <minimumLux>6001</minimumLux>
         <timing>
             <timeWindowSecs>0</timeWindowSecs>
             <timeMaxSecs>0</timeMaxSecs>
