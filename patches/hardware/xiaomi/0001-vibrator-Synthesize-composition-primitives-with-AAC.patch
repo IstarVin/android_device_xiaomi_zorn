@@ -1,0 +1,478 @@
+From bf0e2bb477f81cda2f8a3e5e9a7e45c3fec68a22 Mon Sep 17 00:00:00 2001
+From: web1n <9633157+web1n@users.noreply.github.com>
+Date: Tue, 20 Oct 2026 10:41:01 +0800
+Subject: [PATCH] vibrator: Synthesize composition primitives with AAC
+
+Allow devices without primitive waveform files to generate composition
+effects through vendor libaachaptics.so. Select the library module and
+resonance reference through Soong.
+
+Generate and cache 24 kHz streams under the effect cache mutex. Keep the
+AAC engine initialized for the service lifetime and let QTI handle
+playback, cancellation and runtime amplitude control. Retain file fallback
+when synthesis fails and reject primitives unavailable from either source.
+
+Use zero-ended envelopes and compensate continuous control points for the
+engine's nonlinear intensity response. Set chirp durations to AOSP targets
+and map resonance-relative frequency targets to the nearest supported
+engine values. Account for partial frames and the final sample when
+draining 500 ms streams.
+
+Add the library to proprietary-files.txt:
+
+    odm/lib64/libaachaptics.so:vendor/lib64/libaachaptics.so
+
+Enable AAC synthesis in device.mk:
+
+    $(call soong_config_set,xiaomi_vibrator,aac_library,//vendor/xiaomi/<device>:libaachaptics)
+    $(call soong_config_set,xiaomi_vibrator,aac_f0,173)
+
+Inspired by Fuzail Mansuri's RichTap primitive implementation:
+https://github.com/fuzailmansuri/android_hardware_nothing/commit/6b4353c481819da97b8bf1e48ecc769a53d8dcee
+
+Change-Id: I9db7376453697075b12d3afde716e2a561fdaec4
+---
+ README.md                     |   2 +
+ vibrator/effect/AacEffect.cpp | 243 ++++++++++++++++++++++++++++++++++
+ vibrator/effect/AacEffect.h   |  12 ++
+ vibrator/effect/Android.bp    |  36 +++++
+ vibrator/effect/effect.cpp    |  51 ++++++-
+ 5 files changed, 337 insertions(+), 7 deletions(-)
+ create mode 100644 vibrator/effect/AacEffect.cpp
+ create mode 100644 vibrator/effect/AacEffect.h
+
+diff --git a/README.md b/README.md
+index 963c210..545d806 100644
+--- a/README.md
++++ b/README.md
+@@ -9,3 +9,5 @@
+ | XIAOMI_TOUCH | HIGH_TOUCH_POLLING_PATH | HighTouchPollingRate feature control path | |
+ | XIAOMI_TOUCH | KEY_DISABLER_CONTROL_PATH | KeyDisabler feature control path | |
+ | XIAOMI_TOUCH | KEY_SWAPPER_CONTROL_PATH | KeySwapper feature control path | |
++| xiaomi_vibrator | aac_library | Vendor `libaachaptics.so` module for primitive synthesis | |
++| xiaomi_vibrator | aac_f0 | Required AAC resonance reference in Hz (150–190) | |
+diff --git a/vibrator/effect/AacEffect.cpp b/vibrator/effect/AacEffect.cpp
+new file mode 100644
+index 0000000..3c731e2
+--- /dev/null
++++ b/vibrator/effect/AacEffect.cpp
+@@ -0,0 +1,243 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#define LOG_TAG "libqtivibratoreffect.xiaomi"
++
++#include "AacEffect.h"
++
++#include <aidl/android/hardware/vibrator/CompositePrimitive.h>
++#include <log/log.h>
++
++#include <algorithm>
++#include <array>
++#include <cmath>
++
++#ifndef XIAOMI_VIBRATOR_AAC_F0
++#error "Set xiaomi_vibrator.aac_f0 when enabling the AAC effect generator"
++#endif
++
++// The AAC MI Haptics API in the stock libaachaptics.so has process-global state.
++extern "C" {
++int aac_haptics_init(int32_t* config);
++int aac_haptics_process(void* events, uint32_t size);
++int aac_haptics_get_frame(void* buffer, int32_t* length);
++}
++
++namespace {
++
++using aidl::android::hardware::vibrator::CompositePrimitive;
++using HeEvent = std::array<int32_t, 17>;
++static_assert(sizeof(HeEvent) == 68);
++
++constexpr int32_t kSampleRateHz = 24000;
++constexpr int32_t kFrameSize = 512;
++constexpr int32_t kMaxPrimitiveDurationMs = 500;
++// AAC includes the final sample at the envelope endpoint.
++constexpr size_t kMaxSamples = kSampleRateHz * kMaxPrimitiveDurationMs / 1000 + 1;
++// Each of the three envelope segments can end with a partial frame. Allow
++// those boundaries and the zero-length terminal frame as well as full frames.
++constexpr size_t kMaxFrameCount = (kMaxSamples + kFrameSize - 1) / kFrameSize + 3;
++constexpr int32_t kF0Hz = XIAOMI_VIBRATOR_AAC_F0;
++static_assert(kF0Hz >= 150 && kF0Hz <= 190);
++
++// Transient sharpness selects an engine waveform; it is not a frequency in Hz.
++// The engine determines the duration from both sharpness and intensity.
++constexpr int32_t kTransientClickSharpness = 50;
++constexpr int32_t kTransientLightTickSharpness = 80;
++constexpr int32_t kTransientLowTickSharpness = 10;
++constexpr float kClickAmplitude = 1.0f;
++constexpr float kLightTickAmplitude = 0.5f;
++constexpr float kLowTickAmplitude = 0.8f;
++
++constexpr int32_t kThudDurationMs = 300;
++constexpr int32_t kSpinDurationMs = 150;
++constexpr int32_t kQuickRiseDurationMs = 150;
++constexpr int32_t kSlowRiseDurationMs = 500;
++constexpr int32_t kQuickFallDurationMs = 100;
++// Keep the peak inside the engine's mandatory zero-amplitude endpoints.
++constexpr int32_t kEnvelopeEdgeMs = 5;
++
++// AAC maps the event sharpness plus each point's offset through this
++// frequency table. Targets below 107 Hz use the lowest supported frequency.
++constexpr std::array<int32_t, 151> kContinuousFrequenciesHz = {
++        107, 109, 109, 111, 111, 113, 113, 115, 115, 116, 116, 118, 118, 120, 120,
++        122, 122, 124, 124, 126, 126, 128, 128, 130, 130, 131, 131, 133, 133, 135,
++        135, 137, 137, 139, 139, 141, 141, 143, 143, 145, 145, 146, 146, 148, 148,
++        150, 150, 152, 152, 154, 154, 159, 159, 164, 164, 169, 169, 174, 174, 179,
++        179, 184, 184, 189, 189, 194, 194, 199, 199, 204, 204, 209, 209, 214, 214,
++        220, 220, 225, 225, 230, 230, 235, 235, 240, 240, 245, 245, 250, 250, 255,
++        255, 260, 260, 265, 265, 270, 270, 275, 275, 280, 280, 287, 287, 294, 294,
++        302, 302, 309, 309, 316, 316, 323, 323, 330, 330, 338, 338, 345, 345, 352,
++        352, 359, 359, 366, 366, 374, 374, 381, 381, 388, 388, 395, 395, 400, 400,
++        400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400,
++        400};
++
++struct Point {
++    int32_t timeMs;
++    float amplitude;
++    int32_t frequencyHz;
++};
++
++int32_t frequencySelector(int32_t frequencyHz) {
++    const auto begin = kContinuousFrequenciesHz.begin();
++    const auto end = kContinuousFrequenciesHz.end();
++    auto it = std::lower_bound(begin, end, frequencyHz);
++    if (it == end) return kContinuousFrequenciesHz.size() - 1;
++    if (it != begin && frequencyHz - *(it - 1) <= *it - frequencyHz) --it;
++    return it - begin;
++}
++
++// HE intensity is nonlinear: drive = I * 1.14^((I - 100) / 10) / 100.
++int32_t heIntensity(float amplitude) {
++    amplitude = std::clamp(amplitude, 0.0f, 1.0f);
++    if (amplitude == 0.0f) return 0;
++    float low = 0.0f;
++    float high = 100.0f;
++    for (int i = 0; i < 20; ++i) {
++        const float mid = (low + high) / 2;
++        const float drive = mid * std::pow(1.14f, (mid - 100.0f) / 10.0f) / 100.0f;
++        (drive < amplitude ? low : high) = mid;
++    }
++    return std::max(1, static_cast<int32_t>(std::lround(high)));
++}
++
++HeEvent transient(float amplitude, int32_t sharpness) {
++    return {0x1001, 0, heIntensity(amplitude), sharpness};
++}
++
++HeEvent continuous(int32_t durationMs, const std::array<Point, 4>& curve) {
++    if (curve.front().amplitude != 0.0f || curve.back().amplitude != 0.0f) {
++        ALOGE("AAC continuous envelopes require zero endpoint amplitudes");
++        return {};
++    }
++
++    std::array<int32_t, 4> selectors;
++    for (size_t i = 0; i < curve.size(); ++i) {
++        selectors[i] = frequencySelector(curve[i].frequencyHz);
++    }
++    const auto [low, high] = std::minmax_element(selectors.begin(), selectors.end());
++    const int32_t sharpness = std::clamp((*low + *high) / 2, 0, 100);
++    if (*low < sharpness - 50 || *high > sharpness + 50) {
++        ALOGE("AAC frequency sweep exceeds the control point offset range");
++        return {};
++    }
++
++    HeEvent event{0x1000, 0, 100, sharpness, durationMs};
++    for (size_t i = 0; i < curve.size(); ++i) {
++        event[5 + i * 3] = curve[i].timeMs;
++        // The engine applies the transfer function after multiplying event and point
++        // intensity. Invert each control point to preserve the intended envelope.
++        event[6 + i * 3] = heIntensity(curve[i].amplitude);
++        event[7 + i * 3] = selectors[i] - sharpness;
++    }
++    return event;
++}
++
++HeEvent primitiveEvent(CompositePrimitive primitive) {
++    switch (primitive) {
++        case CompositePrimitive::CLICK:
++            return transient(kClickAmplitude, kTransientClickSharpness);
++        case CompositePrimitive::LIGHT_TICK:
++            return transient(kLightTickAmplitude, kTransientLightTickSharpness);
++        case CompositePrimitive::LOW_TICK:
++            return transient(kLowTickAmplitude, kTransientLowTickSharpness);
++        case CompositePrimitive::THUD:
++            return continuous(
++                    kThudDurationMs,
++                    {{{0, 0.0f, kF0Hz},
++                      {kEnvelopeEdgeMs, 1.0f, kF0Hz * 7 / 8},
++                      {kThudDurationMs / 2, 0.5f, kF0Hz * 5 / 8},
++                      {kThudDurationMs, 0.0f, kF0Hz / 2}}});
++        case CompositePrimitive::SPIN:
++            return continuous(
++                    kSpinDurationMs,
++                    {{{0, 0.0f, kF0Hz * 2 / 3},
++                      {kSpinDurationMs / 2, 1.0f, kF0Hz},
++                      {kSpinDurationMs * 3 / 4, 0.6f, kF0Hz * 3 / 4},
++                      {kSpinDurationMs, 0.0f, kF0Hz / 2}}});
++        case CompositePrimitive::QUICK_RISE:
++            return continuous(
++                    kQuickRiseDurationMs,
++                    {{{0, 0.0f, kF0Hz / 2},
++                      {kQuickRiseDurationMs * 2 / 5, 0.45f, kF0Hz * 3 / 4},
++                      {kQuickRiseDurationMs - kEnvelopeEdgeMs, 1.0f, kF0Hz},
++                      {kQuickRiseDurationMs, 0.0f, kF0Hz}}});
++        case CompositePrimitive::SLOW_RISE:
++            return continuous(
++                    kSlowRiseDurationMs,
++                    {{{0, 0.0f, kF0Hz / 2},
++                      {kSlowRiseDurationMs * 2 / 5, 0.3f, kF0Hz * 3 / 4},
++                      {kSlowRiseDurationMs - kEnvelopeEdgeMs, 1.0f, kF0Hz},
++                      {kSlowRiseDurationMs, 0.0f, kF0Hz}}});
++        case CompositePrimitive::QUICK_FALL:
++            return continuous(
++                    kQuickFallDurationMs,
++                    {{{0, 0.0f, kF0Hz * 2},
++                      {kEnvelopeEdgeMs, 1.0f, kF0Hz * 7 / 4},
++                      {kQuickFallDurationMs / 2, 0.3f, kF0Hz * 5 / 4},
++                      {kQuickFallDurationMs, 0.0f, kF0Hz}}});
++        default:
++            return {};
++    }
++}
++
++class AacEngine {
++  public:
++    AacEngine() {
++        int32_t config[]{kFrameSize, kSampleRateHz, 1, kF0Hz};
++        mReady = aac_haptics_init(config) == 0;
++        if (!mReady) ALOGE("AAC initialization failed");
++    }
++
++    std::vector<int8_t> render(HeEvent event) {
++        if (!mReady) return {};
++        if (aac_haptics_process(event.data(), sizeof(event)) != 0) {
++            mReady = false;
++            ALOGE("AAC processing failed");
++            return {};
++        }
++
++        std::vector<int8_t> samples;
++        std::array<int8_t, kFrameSize> frame;
++        for (size_t count = 0; count < kMaxFrameCount; ++count) {
++            int32_t length = -1;
++            if (aac_haptics_get_frame(frame.data(), &length) != 0 || length < 0 ||
++                length > kFrameSize || samples.size() + length > kMaxSamples) {
++                break;
++            }
++            if (length == 0) return samples;
++            samples.insert(samples.end(), frame.begin(), frame.begin() + length);
++        }
++
++        // Do not submit another event after a malformed or incomplete stream.
++        mReady = false;
++        ALOGE("AAC returned an invalid or oversized stream");
++        return {};
++    }
++
++  private:
++    bool mReady = false;
++};
++
++}  // namespace
++
++std::vector<int8_t> renderAacPrimitive(uint32_t primitiveId) {
++    const auto primitive = static_cast<CompositePrimitive>(primitiveId);
++    if (primitive == CompositePrimitive::NOOP) return std::vector<int8_t>(24, 0);
++
++    auto event = primitiveEvent(primitive);
++    if (event[0] == 0) return {};
++
++    // Initialize once, consume each stream through its zero-length terminal frame,
++    // and retain the library for the lifetime of the HAL's detached AAC worker.
++    static AacEngine engine;
++    auto samples = engine.render(event);
++    if (!samples.empty()) {
++        ALOGI("AAC synthesized %s: %zu samples, %.2f ms at %d Hz (f0=%d Hz)",
++              toString(primitive).c_str(), samples.size(),
++              samples.size() * 1000.0 / kSampleRateHz, kSampleRateHz, kF0Hz);
++    }
++    return samples;
++}
+diff --git a/vibrator/effect/AacEffect.h b/vibrator/effect/AacEffect.h
+new file mode 100644
+index 0000000..adeb6df
+--- /dev/null
++++ b/vibrator/effect/AacEffect.h
+@@ -0,0 +1,12 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#pragma once
++
++#include <cstdint>
++#include <vector>
++
++// Calls must be serialized with the effect stream cache.
++std::vector<int8_t> renderAacPrimitive(uint32_t primitiveId);
+diff --git a/vibrator/effect/Android.bp b/vibrator/effect/Android.bp
+index eaa7f2b..9d774f2 100644
+--- a/vibrator/effect/Android.bp
++++ b/vibrator/effect/Android.bp
+@@ -1,8 +1,44 @@
+ Common_CFlags = ["-Wall"]
+ Common_CFlags += ["-Werror"]
+ 
++soong_config_module_type {
++    name: "xiaomi_vibrator_effect_defaults",
++    module_type: "cc_defaults",
++    config_namespace: "xiaomi_vibrator",
++    value_variables: [
++        "aac_library",
++        "aac_f0",
++    ],
++    properties: [
++        "cflags",
++        "compile_multilib",
++        "shared_libs",
++        "srcs",
++    ],
++}
++
++xiaomi_vibrator_effect_defaults {
++    name: "xiaomi_vibrator_effect_defaults",
++    soong_config_variables: {
++        aac_library: {
++            cflags: ["-DXIAOMI_VIBRATOR_USE_AAC"],
++            compile_multilib: "64",
++            srcs: ["AacEffect.cpp"],
++            shared_libs: [
++                "%s",
++                "liblog",
++                "libm",
++            ],
++        },
++        aac_f0: {
++            cflags: ["-DXIAOMI_VIBRATOR_AAC_F0=%s"],
++        },
++    },
++}
++
+ cc_library_shared {
+     name: "libqtivibratoreffect.xiaomi",
++    defaults: ["xiaomi_vibrator_effect_defaults"],
+     vendor: true,
+     cflags: Common_CFlags,
+     srcs: [
+diff --git a/vibrator/effect/effect.cpp b/vibrator/effect/effect.cpp
+index f09d09a..2713935 100644
+--- a/vibrator/effect/effect.cpp
++++ b/vibrator/effect/effect.cpp
+@@ -39,11 +39,16 @@
+ #include <filesystem>
+ #include <fstream>
+ #include <iostream>
++#include <mutex>
+ #include <unordered_map>
+ #include <vector>
+ 
+ #include "effect.h"
+ 
++#ifdef XIAOMI_VIBRATOR_USE_AAC
++#include "AacEffect.h"
++#endif
++
+ using aidl::android::hardware::vibrator::Effect;
+ 
+ namespace {
+@@ -53,6 +58,20 @@ const uint16_t kPrimitiveMask = (1 << 15);
+ 
+ std::unordered_map<uint32_t, effect_stream> sEffectStreams;
+ std::unordered_map<uint32_t, std::vector<int8_t>> sEffectFifoData;
++std::mutex sEffectMutex;
++
++#ifdef XIAOMI_VIBRATOR_USE_AAC
++std::unique_ptr<effect_stream> generatePrimitive(uint32_t uniqueEffectId) {
++    const uint32_t primitiveId = uniqueEffectId & ~kPrimitiveMask;
++    auto samples = renderAacPrimitive(primitiveId);
++    if (samples.empty()) return nullptr;
++
++    auto result = sEffectFifoData.emplace(uniqueEffectId, std::move(samples));
++    const auto& data = result.first->second;
++    return std::make_unique<effect_stream>(primitiveId, static_cast<uint32_t>(data.size()),
++                                           kDefaultPlayRateHz, data.data());
++}
++#endif
+ 
+ std::unique_ptr<effect_stream> readEffectStreamFromFile(uint32_t uniqueEffectId) {
+     std::filesystem::path filePath;
+@@ -86,6 +105,8 @@ std::unique_ptr<effect_stream> readEffectStreamFromFile(uint32_t uniqueEffectId)
+ 
+ std::unique_ptr<effect_stream> duplicateEffect(const effect_stream* effectStream,
+                                                uint32_t newEffectId) {
++    if (!effectStream) return nullptr;
++
+     const std::uint32_t newEffectLength = effectStream->length * 4;
+     std::vector<int8_t> fifoData(newEffectLength);
+ 
+@@ -99,19 +120,28 @@ std::unique_ptr<effect_stream> duplicateEffect(const effect_stream* effectStream
+                                            result.first->second.data());
+ }
+ 
+-}  // namespace
+-
+-const struct effect_stream* get_effect_stream(uint32_t effectId) {
++const struct effect_stream* getEffectStreamLocked(uint32_t effectId) {
+     auto it = sEffectStreams.find(effectId);
+     if (it == sEffectStreams.end()) {
+-        std::unique_ptr<effect_stream> newEffectStream = readEffectStreamFromFile(effectId);
++        std::unique_ptr<effect_stream> newEffectStream;
++#ifdef XIAOMI_VIBRATOR_USE_AAC
++        if ((effectId & kPrimitiveMask) != 0) {
++            newEffectStream = generatePrimitive(effectId);
++        }
++#endif
++        if (!newEffectStream) newEffectStream = readEffectStreamFromFile(effectId);
+ 
+         if (newEffectStream) {
+             auto result = sEffectStreams.emplace(effectId, *newEffectStream);
+             return &result.first->second;
+-        } else if (effectId == (uint32_t)Effect::DOUBLE_CLICK) {
++        }
++#ifdef XIAOMI_VIBRATOR_USE_AAC
++        // A failed primitive must not be advertised as a copy of CLICK.
++        if ((effectId & kPrimitiveMask) != 0) return nullptr;
++#endif
++        if (effectId == (uint32_t)Effect::DOUBLE_CLICK) {
+             LOG(VERBOSE) << "Could not get double click effect, duplicating click effect";
+-            newEffectStream = duplicateEffect(get_effect_stream((uint32_t)Effect::CLICK),
++            newEffectStream = duplicateEffect(getEffectStreamLocked((uint32_t)Effect::CLICK),
+                                               (uint32_t)Effect::DOUBLE_CLICK);
+             if (newEffectStream) {
+                 auto result = sEffectStreams.emplace(effectId, *newEffectStream);
+@@ -119,7 +149,7 @@ const struct effect_stream* get_effect_stream(uint32_t effectId) {
+             }
+         } else if (effectId != (uint32_t)Effect::CLICK) {
+             LOG(VERBOSE) << "Could not get effect " << effectId << ", falling back to click effect";
+-            return get_effect_stream((uint32_t)Effect::CLICK);
++            return getEffectStreamLocked((uint32_t)Effect::CLICK);
+         }
+     } else {
+         return &it->second;
+@@ -127,3 +157,10 @@ const struct effect_stream* get_effect_stream(uint32_t effectId) {
+ 
+     return nullptr;
+ }
++
++}  // namespace
++
++const struct effect_stream* get_effect_stream(uint32_t effectId) {
++    std::lock_guard<std::mutex> lock(sEffectMutex);
++    return getEffectStreamLocked(effectId);
++}
+-- 
+2.56.1
+

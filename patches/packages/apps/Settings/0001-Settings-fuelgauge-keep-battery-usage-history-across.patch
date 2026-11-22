@@ -1,0 +1,156 @@
+From ee3a90006a3b930502312227091699532d500261 Mon Sep 17 00:00:00 2001
+From: IstarVin <ajdeleverio20@gmail.com>
+Date: Sun, 22 Nov 2026 20:32:39 +0800
+Subject: [PATCH] Settings: fuelgauge: keep battery usage history across
+ reboots
+
+Hourly snapshot alarms do not survive a reboot, so the hours around a
+reboot rendered as empty slots in the battery usage chart.
+
+- Tag the delayed recheck sent after BOOT_COMPLETED with EXTRA_FROM_BOOT
+  and take a snapshot right away when it arrives.
+- Treat SETUP_WIZARD_FINISHED as a non-boot refresh; scheduling it as
+  fromBoot skipped the next hourly snapshot because no recheck follows.
+- In DataProcessor, force-align the post-boot snapshot (taken within
+  15 minutes of boot) into the current slot. Its values are cumulative
+  since the last full charge, so powered-off slots come out as zero
+  instead of blank.
+---
+ .../batteryusage/BootBroadcastReceiver.java   | 19 ++++++++++++++++++-
+ .../fuelgauge/batteryusage/DataProcessor.java | 15 +++++++++++++--
+ .../BootBroadcastReceiverTest.java            | 15 +++++++++++++++
+ 3 files changed, 46 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiver.java b/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiver.java
+index 76c380b..788bdba 100644
+--- a/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiver.java
++++ b/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiver.java
+@@ -23,6 +23,8 @@ import android.os.Handler;
+ import android.os.Looper;
+ import android.util.Log;
+ 
++import androidx.annotation.VisibleForTesting;
++
+ import com.android.settings.core.instrumentation.ElapsedTimeUtils;
+ import com.android.settings.fuelgauge.BatteryUsageHistoricalLogEntry.Action;
+ import com.android.settings.fuelgauge.batteryusage.bugreport.BatteryUsageLogUtils;
+@@ -43,6 +45,10 @@ public final class BootBroadcastReceiver extends BroadcastReceiver {
+     public static final String ACTION_SETUP_WIZARD_FINISHED =
+             "com.google.android.setupwizard.SETUP_WIZARD_FINISHED";
+ 
++    /** Set on the recheck that follows BOOT_COMPLETED, to capture a post-boot snapshot. */
++    @VisibleForTesting
++    static final String EXTRA_FROM_BOOT = "com.android.settings.battery.extra.FROM_BOOT";
++
+     /** Invokes periodic job rechecking process. */
+     public static void invokeJobRecheck(Context context) {
+         context = context.getApplicationContext();
+@@ -61,13 +67,23 @@ public final class BootBroadcastReceiver extends BroadcastReceiver {
+ 
+         switch (action) {
+             case Intent.ACTION_BOOT_COMPLETED:
+-            case ACTION_SETUP_WIZARD_FINISHED:
+                 Log.d(TAG, "refresh periodic job from action=" + action);
+                 refreshJobs(context, true);
+                 break;
++            case ACTION_SETUP_WIZARD_FINISHED:
++                // Not a boot: no recheck follows, so a fromBoot schedule here would silently
++                // skip the next hourly snapshot (sBroadcastDelayFromBoot is 40 minutes).
++                Log.d(TAG, "refresh periodic job from action=" + action);
++                refreshJobs(context, false);
++                break;
+             case ACTION_PERIODIC_JOB_RECHECK:
+                 Log.d(TAG, "refresh periodic job from action=" + action);
+                 refreshJobs(context, false);
++                if (intent.getBooleanExtra(EXTRA_FROM_BOOT, false)) {
++                    // Hourly alarms do not survive a reboot. Snapshot now so the hours around
++                    // the reboot can still be computed instead of rendering as empty slots.
++                    BatteryUsageDataLoader.enqueueWork(context, /* isFullChargeStart= */ false);
++                }
+                 break;
+             case Intent.ACTION_TIME_CHANGED:
+                 Log.d(TAG, "refresh job and clear data from action=" + action);
+@@ -85,6 +101,7 @@ public final class BootBroadcastReceiver extends BroadcastReceiver {
+         if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+             final Intent recheckIntent = new Intent(ACTION_PERIODIC_JOB_RECHECK);
+             recheckIntent.setClass(context, BootBroadcastReceiver.class);
++            recheckIntent.putExtra(EXTRA_FROM_BOOT, true);
+             final long delayedTime = RESCHEDULE_FOR_BOOT_ACTION_DELAY_MILLIS;
+             mHandler.postDelayed(() -> context.sendBroadcast(recheckIntent), delayedTime);
+ 
+diff --git a/src/com/android/settings/fuelgauge/batteryusage/DataProcessor.java b/src/com/android/settings/fuelgauge/batteryusage/DataProcessor.java
+index b4bf049..9fea8d0 100644
+--- a/src/com/android/settings/fuelgauge/batteryusage/DataProcessor.java
++++ b/src/com/android/settings/fuelgauge/batteryusage/DataProcessor.java
+@@ -88,6 +88,8 @@ public final class DataProcessor {
+     private static final int MIN_AVERAGE_POWER_THRESHOLD_MILLI_AMP = 10;
+     private static final int MIN_DAILY_DATA_SIZE = 2;
+     private static final int MAX_DIFF_SECONDS_OF_UPPER_TIMESTAMP = 5;
++    // Snapshots taken within this time after boot are treated as the post-boot snapshot.
++    private static final int MAX_BOOT_SNAPSHOT_ELAPSED_MINUTES = 15;
+     private static final String MEDIASERVER_PACKAGE_NAME = "mediaserver";
+     private static final String ANDROID_CORE_APPS_SHARED_USER_ID = "android.uid.shared";
+     private static final Map<String, BatteryHistEntry> EMPTY_BATTERY_MAP = new ArrayMap<>();
+@@ -1359,8 +1361,17 @@ public final class DataProcessor {
+         // data.
+         if (lowerTimestamp < upperEntryDataBootTimestamp
+                 && !TimestampUtils.isMidnight(currentSlot)) {
+-            // Provides an opportunity to force align the slot directly.
+-            if ((upperTimestamp - currentSlot) < 10 * DateUtils.MINUTE_IN_MILLIS) {
++            // Provides an opportunity to force align the slot directly. Also align when the
++            // upper data is the post-boot snapshot: its values are still cumulative since the
++            // last full charge, so usage before the reboot belongs to the earlier slot(s) and
++            // slots while powered off correctly come out as zero instead of blank.
++            final boolean upperIsBootSnapshot =
++                    upperEntryDataFirstEntry.mBootTimestamp > 0
++                            && upperEntryDataFirstEntry.mBootTimestamp
++                                    < MAX_BOOT_SNAPSHOT_ELAPSED_MINUTES
++                                            * DateUtils.MINUTE_IN_MILLIS;
++            if ((upperTimestamp - currentSlot) < 10 * DateUtils.MINUTE_IN_MILLIS
++                    || upperIsBootSnapshot) {
+                 log(context, "force align into the nearest slot", currentSlot, null);
+                 resultMap.put(currentSlot, upperEntryDataMap);
+             } else {
+diff --git a/tests/robotests/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiverTest.java b/tests/robotests/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiverTest.java
+index 8ea9d55..9b66233 100644
+--- a/tests/robotests/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiverTest.java
++++ b/tests/robotests/src/com/android/settings/fuelgauge/batteryusage/BootBroadcastReceiverTest.java
+@@ -29,6 +29,7 @@ import android.app.usage.UsageStatsManager;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
++import android.os.Looper;
+ import android.os.UserManager;
+ 
+ import androidx.test.core.app.ApplicationProvider;
+@@ -51,6 +52,7 @@ import org.robolectric.annotation.Config;
+ import org.robolectric.shadows.ShadowAlarmManager;
+ 
+ import java.time.Clock;
++import java.time.Duration;
+ import java.util.List;
+ import java.util.TimeZone;
+ import java.util.concurrent.TimeUnit;
+@@ -214,6 +216,19 @@ public final class BootBroadcastReceiverTest {
+         assertThat(mShadowAlarmManager.peekNextScheduledAlarm()).isNotNull();
+     }
+ 
++    @Test
++    public void onReceive_withBootCompletedIntent_sendsRecheckFromBoot() {
++        mReceiver.onReceive(mContext, new Intent(Intent.ACTION_BOOT_COMPLETED));
++        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6));
++
++        final List<Intent> intents = Shadows.shadowOf((Application) mContext).getBroadcastIntents();
++        assertThat(intents).hasSize(1);
++        assertThat(intents.get(0).getAction())
++                .isEqualTo(BootBroadcastReceiver.ACTION_PERIODIC_JOB_RECHECK);
++        assertThat(intents.get(0).getBooleanExtra(BootBroadcastReceiver.EXTRA_FROM_BOOT, false))
++                .isTrue();
++    }
++
+     @Test
+     public void invokeJobRecheck_broadcastsIntent() {
+         BootBroadcastReceiver.invokeJobRecheck(mContext);
+-- 
+2.56.1
+
