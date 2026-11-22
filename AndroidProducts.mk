@@ -5,4 +5,4 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/lineage_zorn.mk
+    $(LOCAL_DIR)/infinity_zorn.mk
