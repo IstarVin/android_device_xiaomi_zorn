@@ -9,6 +9,10 @@ PRODUCT_SHIPPING_API_LEVEL := 35
 # Camera
 $(call inherit-product-if-exists, device/xiaomi/zorn-miuicamera/device.mk)
 
+# Camera (Mi sensor camera service)
+PRODUCT_PACKAGES += \
+    libcamera2ndk_vendor
+
 # Display
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/displayconfig/display_id_4630946540531149187.xml:$(TARGET_COPY_OUT_VENDOR)/etc/displayconfig/display_id_4630946540531149187.xml
@@ -59,6 +63,8 @@ PRODUCT_COPY_FILES += \
 
 $(call soong_config_set,qti_vibrator,effect_lib,libqtivibratoreffect.xiaomi)
 $(call soong_config_set_bool,qti_vibrator,use_effect_stream,true)
+$(call soong_config_set,xiaomi_vibrator,aac_library,//vendor/xiaomi/zorn:libaachaptics)
+$(call soong_config_set,xiaomi_vibrator,aac_f0,173)
 
 # Inherit from the proprietary files makefile.
 $(call inherit-product, vendor/xiaomi/zorn/zorn-vendor.mk)

@@ -290,6 +290,7 @@ odm/lib64/libtouchreport_hal.so
 odm/lib64/libtouchreport_sensor.so
 
 # Vibrator
+odm/lib64/libaachaptics.so:vendor/lib64/libaachaptics.so
 odm/firmware/0_click_P_RTP.bin:vendor/etc/vibrator/effect_0.bin
 odm/firmware/0_click_P_RTP.bin:vendor/etc/vibrator/primitive_effect_0.bin
 odm/firmware/1_doubelClick_P_RTP.bin:vendor/etc/vibrator/effect_1.bin
@@ -308,6 +309,7 @@ odm/firmware/8_ringTone3_P_RTP.bin:vendor/etc/vibrator/primitive_effect_8.bin
 odm/firmware/9_ringTone4_P_RTP.bin:vendor/etc/vibrator/primitive_effect_9.bin
 
 # Camera
+odm/bin/hw/misensor_camera
 odm/lib/rfsa/adsp/libSnpeHtpV75Skel.so;SYMLINK=vendor/lib/rfsa/adsp/libSnpeHtpV75Skel.so
 odm/lib/rfsa/adsp/libmialgo_ai_process_cdsp_skel.so
 odm/lib/rfsa/adsp/libmialgo_basic_cdsp_skel.so

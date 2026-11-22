@@ -88,6 +88,13 @@ lib_fixups: lib_fixups_user_type = {
 }
 
 blob_fixups: blob_fixups_user_type = {
+    # The stock service passes AImageReader_getWindowNativeHandle() output to
+    # the camera NDK, which expects an ANativeWindow (SIGBUS otherwise).
+    'odm/bin/hw/misensor_camera': blob_fixup()
+        .binary_regex_replace(
+            b'AImageReader_getWindowNativeHandle',
+            b'AImageReader_getWindow' + b'\x00' * 12,
+    ),
     (
         'odm/lib64/camera/plugins/com.xiaomi.plugin.anchor.so',
         'odm/lib64/com.qti.feature2.anchorsync.so',
