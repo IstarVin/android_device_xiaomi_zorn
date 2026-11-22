@@ -17,7 +17,7 @@ $(call inherit-product, device/xiaomi/zorn/device.mk)
 # Project Infinity X
 # Set your name to appear in About Phone, e.g. INFINITY_MAINTAINER := "YourName"
 INFINITY_MAINTAINER := "IstarVin"
-WITH_GAPPS := true
+WITH_GAPPS := false
 TARGET_HAS_UDFPS := true
 TARGET_SCREEN_WIDTH := 1440
 TARGET_SCREEN_HEIGHT := 3200
@@ -39,7 +39,7 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
     DeviceName=$(PRODUCT_SYSTEM_DEVICE) \
     DeviceProduct=$(PRODUCT_SYSTEM_NAME)
 
-PRODUCT_GMS_CLIENTID_BASE := android-xiaomi
+# PRODUCT_GMS_CLIENTID_BASE := android-xiaomi
 
 # System properties for About Phone (in a prop file: values contain spaces)
 TARGET_SYSTEM_PROP += device/xiaomi/zorn/properties/infinity_system.prop
