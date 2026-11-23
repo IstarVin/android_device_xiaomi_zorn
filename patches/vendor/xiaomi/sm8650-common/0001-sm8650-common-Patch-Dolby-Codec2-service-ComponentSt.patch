@@ -1,0 +1,24 @@
+From d30df8e2faeac54383e994c076d1755a6b462339 Mon Sep 17 00:00:00 2001
+From: IstarVin <ajdeleverio20@gmail.com>
+Date: Mon, 23 Nov 2026 10:42:40 +0800
+Subject: [PATCH] sm8650-common: Patch Dolby Codec2 service ComponentStore
+ allocation
+
+Regenerated with the extract-files.py fixup: mov w0, #0x108 -> #0x120,
+to match sizeof(utils::ComponentStore) in A15+ libcodec2_hidl@1.0.
+---
+ .../bin/hw/vendor.dolby.media.c2@1.0-service  | Bin 68049 -> 68049 bytes
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+
+diff --git a/proprietary/vendor/bin/hw/vendor.dolby.media.c2@1.0-service b/proprietary/vendor/bin/hw/vendor.dolby.media.c2@1.0-service
+index d6a8f988f6ff9981fe26daaa8ec950b31b7be51c..fe03337491255ea2cfff1fcc412dbdd6d07a496e 100755
+GIT binary patch
+delta 16
+YcmcaOndRbSmJN!6j4GRz1lRun05_rrWdHyG
+
+delta 16
+YcmcaOndRbSmJN!6jEb9;1lRun05^~ZVgLXD
+
+-- 
+2.56.1
+
