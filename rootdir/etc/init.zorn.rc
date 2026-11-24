@@ -38,9 +38,6 @@ on early-boot
     mkdir /data/vendor/modem/diag_logs 0777 root root
 
 on boot
-    # Disable FB scaling // xiaomi disables it in qti_display_boot scripts
-    setprop vendor.display.enable_fb_scaling 1
-
     # Xiaomi touch
     chown system system /sys/class/touch/touch_dev/gesture_single_tap_enabled
     chmod 0660 /sys/class/touch/touch_dev/gesture_single_tap_enabled
