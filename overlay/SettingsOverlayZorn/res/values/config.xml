@@ -57,6 +57,6 @@
     </integer-array>
 
     <!-- Evolution X maintainer -->
-    <string name="build_maintainer_summary" translatable="false">SnowyQuest</string>
+    <string name="build_maintainer_summary" translatable="false">IstarVin</string>
     <string name="build_maintainer_donate_url" translatable="false"></string>
 </resources>

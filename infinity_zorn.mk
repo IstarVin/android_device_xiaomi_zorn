@@ -15,7 +15,6 @@ $(call inherit-product, vendor/infinity/config/common_full_phone.mk)
 $(call inherit-product, device/xiaomi/zorn/device.mk)
 
 # Project Infinity X
-# Set your name to appear in About Phone, e.g. INFINITY_MAINTAINER := "YourName"
 INFINITY_MAINTAINER := "IstarVin"
 WITH_GAPPS := false
 TARGET_HAS_UDFPS := true
